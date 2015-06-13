@@ -28,7 +28,7 @@
 
 (defprotocol IEventStream
    (map [s f]
-   	"Returns a new stream containing the result of applying of to the values in s")
+   	"Returns a new stream containing the result of applying f to the values in s")
     (filter [s pred]
        "Returns a new stream containing the items from s for which pred returns true")
      (flatmap [s f]
@@ -61,4 +61,3 @@
 	(let [multiple (mult ch)
 	      completed (atom false)]
 	    (EventStream. ch multiple completed))))
-
