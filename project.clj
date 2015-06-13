@@ -18,7 +18,9 @@
 		   :output-path "target/classes"
 		   :rules :cljs}]}
 
-  :hooks [cljx.hooks]
+  
+
+  :prep-tasks [["cljx" "once"] "javac" "compile"]
 
   :cljsbuild {:builds [{:source-paths ["target/classes"]
   	     	        :compiler {:output-to "target/main.js"}}]}
