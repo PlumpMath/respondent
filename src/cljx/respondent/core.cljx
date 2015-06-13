@@ -71,6 +71,24 @@
               (close! channel)))
       (go (>! channel value))))
 
+  (filter [_ pred]
+    (let [out (filter> pred (chan))]
+      (tap multiple out)
+      (event-stream out)))
+
+  (flatmap [_ f]
+    (let [es (event-stream)
+          out (chan)]
+      (tap multiple out)
+      (go-loop []
+        (when-let [a (<! out)]
+          (let [mb (f a)]
+            (subscribe mb (fn [b]
+                            (deliver es b)))
+            (recur))))
+      es))
+
+  (completed? [_] @completed)
 
   IObservable
   (subscribe [this f]
@@ -97,4 +115,33 @@
 	(let [multiple (mult ch)
 	      completed (atom false)]
 	    (EventStream. ch multiple completed))))
+
+
+;;--- Behavior ----------------------------------------------------
+(defn from-interval
+  "Creates and returns a new event stream which emits values at the given interval. 
+  If no other arguments are given, the values start at 0 and increment by one at each delivery. 
+  If given seed and succ it emits seed and applies succ to seed to get the next value. It then applies succ to the previous result and so on."
+  ([msecs]
+   (from-interval msecs 0 inc))
+  ([msecs seed succ]
+   (let [es (event-stream)]
+     (go-loop [timeout-ch (timeout msecs)
+               value seed]
+       (when-not (completed? es)
+         (<! timeout-ch)
+         (deliver es value)
+         (recur (timeout msecs) (succ value))))
+     es)))
+
+(deftype Behavior [f]
+  IBehavior
+  (sample [_ interval]
+    (from-interval interval (f) (fn [& args] (f))))
+  IDeref
+  (#+clj deref #+cljs -deref [_]
+    (f)))
+
+(defmacro behavior [& body]
+  `(Behavior. #(do ~@body)))
 
